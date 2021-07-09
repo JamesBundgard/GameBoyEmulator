@@ -13,7 +13,18 @@ Bus::Bus() {
 
 	//memory = bootstrap;
 
-	const string inputFile = "individual\\06-ld r,r.gb";
+	//const string inputFile = "individual\\01-special.gb"; // "4F7E89D2 DAA Failed #6"
+	const string inputFile = "individual\\02-interrupts.gb"; // EI Failed #2
+	//const string inputFile = "individual\\03-op sp,hl.gb"; // Passed!
+	//const string inputFile = "individual\\04-op r,imm.gb"; // Passed!
+	//const string inputFile = "individual\\05-op rp.gb"; // Passed!
+	//const string inputFile = "individual\\06-ld r,r.gb"; // Passed!
+	//const string inputFile = "individual\\07-jr,jp,call,ret,rst.gb"; // Passed!
+	//const string inputFile = "individual\\08-misc instrs.gb"; // Passed!
+	//const string inputFile = "individual\\09-op r,r.gb"; // Passed!
+	//const string inputFile = "individual\\10-bit ops.gb"; // Passed!
+	//const string inputFile = "individual\\11-op a,(hl).gb"; // Failed: 27 (DAA)
+
 
 	ifstream stream(inputFile, ios::binary);
 	vector<u8> contents((istreambuf_iterator<char>(stream)), istreambuf_iterator<char>());
@@ -72,12 +83,12 @@ void Bus::write(u16 addr, u8 val) {
 			int bankNumber = addr & 0x1F;
 			memory.insert(memory.begin() + 0x4000, file.begin() + 0x4000 * bankNumber, file.begin() + 0x4000 * (bankNumber + 1));
 		}
-		else {
+		/*else {
 			memory[addr] = val;
-		}
+		}*/
 	}
 	else if (0x4000 <= addr && addr <= 0x7FFF) { // Switchable Bank 01..NN
-		 memory[addr] = val;
+		 //memory[addr] = val;
 	}
 	else if (0x8000 <= addr && addr <= 0x9FFF) { // Video RAM (VRAM)
 		memory[addr] = val;
@@ -102,7 +113,8 @@ void Bus::write(u16 addr, u8 val) {
 	}
 	else if (0xFF00 <= addr && addr <= 0xFF7F) { // I/O Ports
 		memory[addr] = val;
-		if (addr == 0xFF01) cout << val << endl;
+		if (addr == 0xFF02 && val == 0x81) cout << memory[0xFF01] << flush;
+		//if (addr == 0xFF01) cout << val << flush;
 	}
 	else if (0xFF80 <= addr && addr <= 0xFFFE) { // High RAM (HRAM)
 		memory[addr] = val;

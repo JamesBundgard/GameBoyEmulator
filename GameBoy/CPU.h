@@ -11,13 +11,13 @@ class CPU;
 
 typedef std::function<void(u8*, u8)> op;
 
-typedef struct Instruction {
+struct Instruction {
     std::string name;
     std::function<int()> fn;
     int cycles;
 };
 
-typedef union Register
+union Register
 {
     u16 value;
     struct
@@ -41,12 +41,12 @@ enum FLAGS
 
 class CPU {
 private:
-    Register AF = { 0 };
-    Register BC = { 0 };
-    Register DE = { 0 };
-    Register HL = { 0 };
+    Register AF = { 0x11b0 };
+    Register BC = { 0x0013 };
+    Register DE = { 0x00D8 };
+    Register HL = { 0x014D };
     Register SP = { 0xFFFE };
-    Register PC = { 0x100 };
+    Register PC = { 0x0100 };
 
     bool interuptsEnabled = true;
     bool stopped = false;
@@ -98,6 +98,7 @@ private:
     std::function<int()> ADD(Register* reg);
     std::function<int()> ADD(Register* reg1, Register* reg2);
     std::function<int()> PUSH(Register* reg);
+    std::function<int()> POP();
     std::function<int()> POP(Register* reg);
     std::function<int()> OP(op f);
     std::function<int()> OP(u8* reg, op f);
@@ -121,13 +122,13 @@ private:
     std::function<int()> RLA();
     std::function<int()> RRCA();
     std::function<int()> RRA();
-    std::function<int()> RLC(u8* reg);
+    std::function<int()> RLC(u8* reg, bool isA = false);
     std::function<int()> RLC(Register* reg);
-    std::function<int()> RL(u8* reg);
+    std::function<int()> RL(u8* reg, bool isA = false);
     std::function<int()> RL(Register* reg);
-    std::function<int()> RRC(u8* reg);
+    std::function<int()> RRC(u8* reg, bool isA = false);
     std::function<int()> RRC(Register* reg);
-    std::function<int()> RR(u8* reg);
+    std::function<int()> RR(u8* reg, bool isA = false);
     std::function<int()> RR(Register* reg);
     std::function<int()> SLA(u8* reg);
     std::function<int()> SLA(Register* reg);
@@ -158,4 +159,5 @@ public:
     std::string nextInstruction();
     void attachBus(Bus* bus);
     bool isStopped();
+    void printState();
 };

@@ -1,16 +1,23 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <functional>
+#include <set>
+#include <iterator>
 
 #include "CPU.h"
 #include "definitions.h"
+
+//std::ofstream myfile;
 
 using namespace std;
 
 s8 toSigned(u8 b) { return b < 128 ? b : b - 256; }
 u8 hi(u8 val) { return val >> 4; }
 u8 lo(u8 val) { return val & 0xF; }
+
+set<int, greater<int> > s1;
 
 bool checkHalfCarry(u8 a, u8 b) {
 	return (((a & 0xf) + (b & 0xf)) & 0x10) == 0x10;
@@ -21,6 +28,8 @@ bool checkCarry(u8 a, u8 b) {
 }
 
 CPU::CPU() {
+	//myfile.open("out.txt");
+
 	u8* A = &(AF.high);
 	u8* F = &(AF.low);
 	u8* B = &(BC.high);
@@ -52,12 +61,12 @@ CPU::CPU() {
 		{{"RET NZ", RET(NZ), 2},		{"POP BC", POP(&BC), 3},		{"JP NZ, a16", JP(NZ), 3},			{"JP a16", JP(TRUE), 4},		{"CALL NZ, a16", CALL(NZ), 3},	{"PUSH BC", PUSH(&BC), 4},		{"ADD A, d8", ADD(), 2},			{"RST 0", RST(0), 4},			{"RET Z", RET(ZERO), 2},			{"RET", RET(), 4},					{"JP Z, a16", JP(ZERO), 3},			{"???", XXX(), 0},				{"CALL Z, a16", CALL(ZERO), 3},		{"CALL a16", CALL(TRUE), 3},	{"ADC A, d8", OP(ADC()), 2},		{"RST 1", RST(1), 4}},
 		{{"RET NC", RET(NC), 2},		{"POP DE", POP(&DE), 3},		{"JP NC, a16", JP(NC), 3},			{"???", XXX(), 0},				{"CALL NC, a16", CALL(NC), 3},	{"PUSH DE", PUSH(&DE), 4},		{"SUB d8", OP(SUB()), 2},			{"RST 2", RST(2), 4},			{"RET C", RET(CARRY), 2},			{"RETI", RETI(), 4},				{"JP C, a16", JP(CARRY), 3},		{"???", XXX(), 0},				{"CALL C, a16", CALL(CARRY), 3},	{"???", XXX(), 0},				{"SBC A, d8", OP(SBC()), 2},		{"RST 3", RST(3), 4}},
 		{{"LDH (a8), A", STH(A), 3},	{"POP HL", POP(&HL), 3},		{"LD (C), A", STH(C, A), 2},		{"???", XXX(), 0},				{"???", XXX(), 0},				{"PUSH HL", PUSH(&HL), 4},		{"AND d8", OP(AND()), 2},			{"RST 4", RST(4), 4},			{"ADD SP, s8", ADD(&SP), 4},		{"JP HL", JP(&HL), 1},				{"LD (a16), A", STA(A), 4},			{"???", XXX(), 0},				{"???", XXX(), 0},					{"???", XXX(), 0},				{"XOR d8", OP(XOR()), 2},			{"RST 5", RST(5), 4}},
-		{{"LDH A, (a8)", LDH(A), 3},	{"POP AF", POP(&AF), 3},		{"LD A, (C)", LDH(A, C), 2},		{"DI", DI(), 1},				{"???", XXX(), 0},				{"PUSH AF", PUSH(&AF), 4},		{"OR d8", OP(OR()), 2},				{"RST 6", RST(6), 4},			{"LD HL, SP+s8", LDHL(&HL, &SP),3},	{"LD SP, HL", LD(&SP, &HL), 2},		{"LD A, (a16)", LDA(A), 4},			{"EI", EI(), 1},				{"???", XXX(), 0},					{"???", XXX(), 0},				{"CP d8",OP(CP()), 2},				{"RST 7", RST(7), 4}}
+		{{"LDH A, (a8)", LDH(A), 3},	{"POP AF", POP(), 3},			{"LD A, (C)", LDH(A, C), 2},		{"DI", DI(), 1},				{"???", XXX(), 0},				{"PUSH AF", PUSH(&AF), 4},		{"OR d8", OP(OR()), 2},				{"RST 6", RST(6), 4},			{"LD HL, SP+s8", LDHL(&HL, &SP),3},	{"LD SP, HL", LD(&SP, &HL), 2},		{"LD A, (a16)", LDA(A), 4},			{"EI", EI(), 1},				{"???", XXX(), 0},					{"???", XXX(), 0},				{"CP d8",OP(CP()), 2},				{"RST 7", RST(7), 4}}
 	},
 	{
 		{{"RLC B", RLC(B), 2},			{"RLC C", RLC(C), 2},			{"RLC D", RLC(D), 2},				{"RLC E", RLC(E), 2},			{"RLC H", RLC(H), 2},			{"RLC L", RLC(L), 2},			{"RLC (HL)", RLC(&HL), 4},			{"RLC A", RLC(A), 2},			{"RRC B", RRC(B), 2},				{"RRC C", RRC(C), 2},				{"RRC D", RRC(D), 2},				{"RRC E", RRC(E), 2},			{"RRC H", RRC(H), 2},				{"RRC L", RRC(L), 2},			{"RRC (HL)", RRC(&HL), 4},			{"RRC A", RRC(A), 2}},
 		{{"RL B", RL(B), 2},			{"RL C", RL(C), 2},				{"RL D", RL(D), 2},					{"RL E", RL(E), 2},				{"RL H", RL(H), 2},				{"RL L", RL(L), 2},				{"RL (HL)", RL(&HL), 4},			{"RL A", RL(A), 2},				{"RR B", RR(B), 2},					{"RR C", RR(C), 2},					{"RR D", RR(D), 2},					{"RR E", RR(E), 2},				{"RR H", RR(H), 2},					{"RR L", RR(L), 2},				{"RR (HL)", RR(&HL), 4},			{"RR A", RR(A), 2}},
-		{{"SLA B", SLA(B), 2},			{"SLA C", SLA(C), 2},			{"SLA D", SLA(D), 2},				{"SLA E", SLA(E), 2},			{"SLA H", SLA(H), 2},			{"SLA L", SLA(L), 2},			{"SLA (HL)", SLA(&HL), 4},			{"SLA A", SLA(A), 2},			{"SRA B", SRA(B), 2},				{"SRA C", SRA(B), 2},				{"SRA D", SRA(D), 2},				{"SRA E", SRA(E), 2},			{"SRA H", SRA(H), 2},				{"SRA L", SRA(L), 2},			{"SRA (HL)", SRA(&HL), 4},			{"SRA A", SRA(A), 2}},
+		{{"SLA B", SLA(B), 2},			{"SLA C", SLA(C), 2},			{"SLA D", SLA(D), 2},				{"SLA E", SLA(E), 2},			{"SLA H", SLA(H), 2},			{"SLA L", SLA(L), 2},			{"SLA (HL)", SLA(&HL), 4},			{"SLA A", SLA(A), 2},			{"SRA B", SRA(B), 2},				{"SRA C", SRA(C), 2},				{"SRA D", SRA(D), 2},				{"SRA E", SRA(E), 2},			{"SRA H", SRA(H), 2},				{"SRA L", SRA(L), 2},			{"SRA (HL)", SRA(&HL), 4},			{"SRA A", SRA(A), 2}},
 		{{"SWAP B", SWAP(B), 2},		{"SWAP C", SWAP(C), 2},			{"SWAP D", SWAP(D), 2},				{"SWAP E", SWAP(E), 2},			{"SWAP H", SWAP(H), 2},			{"SWAP L", SWAP(L), 2},			{"SWAP (HL)", SWAP(&HL), 4},		{"SWAP A", SWAP(A), 2},			{"SRL B", SRL(B), 2},				{"SRL C", SRL(C), 2},				{"SRL D", SRL(D), 2},				{"SRL E", SRL(E), 2},			{"SRL H", SRL(H), 2},				{"SRL L", SRL(L), 2},			{"SRL (HL)", SRL(&HL), 4},			{"SRL A", SRL(A), 2}},
 		{{"BIT 0, B", BIT(0, B), 2},	{"BIT 0, C", BIT(0, C), 2},		{"BIT 0, D", BIT(0, D), 2},			{"BIT 0, E", BIT(0, E), 2},		{"BIT 0, H", BIT(0, H), 2},		{"BIT 0, L", BIT(0, L), 2},		{"BIT 0, (HL)", BIT(0, &HL), 4},	{"BIT 0, A", BIT(0, A), 2},		{"BIT 1, B", BIT(1, B), 2},			{"BIT 1, C", BIT(1, C), 2},			{"BIT 1, D", BIT(1, D), 2},			{"BIT 1, E", BIT(1, E), 2},		{"BIT 1, H", BIT(1, H), 2},			{"BIT 1, L", BIT(1, L), 2},		{"BIT 1, (HL)", BIT(1, &HL), 4},	{"BIT 1, A", BIT(1, A), 2}},
 		{{"BIT 2, B", BIT(2, B), 2},	{"BIT 2, C", BIT(2, C), 2},		{"BIT 2, D", BIT(2, D), 2},			{"BIT 2, E", BIT(2, E), 2},		{"BIT 2, H", BIT(2, H), 2},		{"BIT 2, L", BIT(2, L), 2},		{"BIT 2, (HL)", BIT(2, &HL), 4},	{"BIT 2, A", BIT(2, A), 2},		{"BIT 3, B", BIT(3, B), 2},			{"BIT 3, C", BIT(3, C), 2},			{"BIT 3, D", BIT(3, D), 2},			{"BIT 3, E", BIT(3, E), 2},		{"BIT 3, H", BIT(3, H), 2},			{"BIT 3, L", BIT(3, L), 2},		{"BIT 3, (HL)", BIT(3, &HL), 4},	{"BIT 3, A", BIT(3, A), 2}},
@@ -102,12 +111,35 @@ int CPU::step() {
 	}
 	auto& instructionDetails = lookup[is16bit][hi(instruction)][lo(instruction)];
 	cycles = instructionDetails.cycles;
-	if (instructionDetails.name != "NOP")
+	if (instructionDetails.name == "RLC B")
 	{
-		cout << std::dec << PC.value - 1 << " (" << std::hex << PC.value - 1 << ") : " << instructionDetails.name << endl;
+		//printState();
+		//cout << std::dec << PC.value - 1 << " (" << std::hex << PC.value - 1 << ") : " << instructionDetails.name << endl;
 	}
+	//myfile << std::hex << PC.value << " " << AF.value << " " << BC.value << " " << DE.value << " " << HL.value << " " << SP.value << " " << std::endl;
+	s1.insert(instruction + is16bit * 0xCB00);
+	/*if (instructionDetails.name == "HALT" || instructionDetails.name == "STOP" || PC.value == 52037) {
+		set<int, greater<int> >::iterator itr;
+		cout << "\nThe set s1 is : \n";
+		for (auto& val : s1)
+		{
+			cout << hex << val << ' ';
+		}
+		cout << endl;
+	}*/
 	cycles += instructionDetails.fn();
 	return cycles;
+}
+
+string decAndHex(u16 val) {
+	std::stringstream ss;
+	ss << std::dec << val << "(0x" << std::hex << val << ") ";
+	return ss.str();
+}
+
+void CPU::printState() {
+	cout << "AF: " << decAndHex(AF.value) << "BC: " << decAndHex(BC.value) << "DE: " << decAndHex(DE.value) << endl;
+	cout << "HL: " << decAndHex(HL.value) << "PC: " << decAndHex(PC.value) << "SP: " << decAndHex(SP.value) << endl;
 }
 
 string CPU::nextInstruction() {
@@ -128,24 +160,51 @@ void CPU::clearFlags() { AF.low &= 0; }
 
 op CPU::SUB() {
 	return [&](u8* x, u8 y) {
-		setFlag(N, true);
+		/*setFlag(N, true);
 		int res = *x - y;
 		int carrybits = *x ^ y ^ res;
 		setFlag(C, (carrybits & 0x100) != 0);
 		setFlag(H, (carrybits & 0x10) != 0);
 		*x -= y;
-		setFlag(Z, *x == 0);
+		setFlag(Z, *x == 0);*/
+		int result = *x - y;
+		int carrybits = *x ^ y ^ result;
+		*x = result;
+		clearFlags();
+		setFlag(N, true);
+		setFlag(Z, (result & 0xFF) == 0);
+		if ((carrybits & 0x100) != 0)
+		{
+			setFlag(C, true);
+		}
+		if ((carrybits & 0x10) != 0)
+		{
+			setFlag(H, true);
+		}
 	};
 }
 op CPU::ADC() {
 	return [&](u8* x, u8 y) {
-		int carry = getFlag(C);
+		/*int carry = getFlag(C);
 		int res = *x + y + carry;
 		clearFlags();
 		setFlag(C, res > 0xFF);
 		setFlag(H, ((*x & 0xF) + (y & 0xF) + carry > 0xF));
 		*x += y + carry;
-		setFlag(Z, *x == 0);
+		setFlag(Z, *x == 0);*/
+		int carry = getFlag(C) ? 1 : 0;
+		int result = *x + y + carry;
+		clearFlags();
+		setFlag(Z, 0 == static_cast<u8> (result));
+		if (result > 0xFF)
+		{
+			setFlag(C, true);
+		}
+		if (((*x & 0x0F) + (y & 0x0F) + carry) > 0x0F)
+		{
+			setFlag(H, true);
+		}
+		*x = result;
 	};
 }
 op CPU::SBC() {
@@ -154,24 +213,33 @@ op CPU::SBC() {
 		int carry = getFlag(C);
 		int res = *x - y - carry;
 		setFlag(C, res < 0);
-		setFlag(H, (*x & 0xF) - (y & 0xF) - carry < 0);
-		*x -= y + getFlag(C);
+		setFlag(H, (int)(*x & 0xF) - (int)(y & 0xF) - carry < 0);
+		*x -= y + carry;
 		setFlag(Z, *x == 0);
 	};
 }
 op CPU::AND() {
 	return [&](u8* x, u8 y) {
-		clearFlags();
+		/*clearFlags();
 		setFlag(H, true);
 		*x &= y;
-		setFlag(Z, *x == 0);
+		setFlag(Z, *x == 0);*/
+		u8 result = *x & y;
+		*x = result;
+		clearFlags();
+		setFlag(H, true);
+		setFlag(Z, result == 0);
 	};
 }
 op CPU::XOR() {
 	return [&](u8* x, u8 y) {
-		clearFlags();
+		/*clearFlags();
 		*x ^= y;
-		setFlag(Z, *x == 0);
+		setFlag(Z, *x == 0);*/
+		u8 result = *x ^ y;
+		AF.high = result;
+		clearFlags();
+		setFlag(Z, result == 0);
 	};
 }
 op CPU::OR() {
@@ -186,9 +254,9 @@ op CPU::CP() {
 		setFlag(N, true);
 		int res = *x - y;
 		int carrybits = *x ^ y ^ res;
-		setFlag(C, (carrybits & 0x100) != 0);
-		setFlag(H, (carrybits & 0x10) != 0);
-		setFlag(Z, (res & 0xFF) == 0);
+		setFlag(C, *x < y);
+		setFlag(H, ((*x - y) & 0xF) > (*x & 0xF));
+		setFlag(Z, *x == y);
 	};
 }
 
@@ -272,14 +340,15 @@ function<int()> CPU::LDD(u8* reg, Register* addr) {
 
 function<int()> CPU::LDH(u8* reg) {
 	return [&, reg]() {
-		*reg = fetch() + 0xFF00;
+		u8 val = fetch();
+		*reg = bus->read(val + 0xFF00);
 		return 0;
 	};
 }
 
 function<int()> CPU::LDH(u8* reg1, u8* reg2) {
 	return [&, reg1, reg2]() {
-		*reg1 = *reg2 + 0xFF00;
+		*reg1 = bus->read(*reg2 + 0xFF00);
 		return 0;
 	};
 }
@@ -332,10 +401,11 @@ function<int()> CPU::LDHL(Register* reg1, Register* reg2) {
 	return [&, reg1, reg2]() {
 		s8 val = toSigned(fetch());
 		reg1->value = reg2->value + val;
+		u16 res = reg1->value;
 		clearFlags();
-		if (((reg2->value ^ val ^ (reg2->value + val)) & 0x100) == 0x100)
+		if (((reg2->value ^ val ^ res) & 0x100) == 0x100)
 			setFlag(C, true);
-		if (((reg2->value ^ val ^ (reg2->value + val)) & 0x10) == 0x10)
+		if (((reg2->value ^ val ^ res) & 0x10) == 0x10)
 			setFlag(H, true);
 		return 0;
 	};
@@ -379,14 +449,26 @@ function<int()> CPU::ADD(u8* reg, Register* addr) {
 
 function<int()> CPU::ADD(Register* reg) {
 	return [&, reg]() {
-		s8 val = toSigned(fetch());
+		/*s8 val = toSigned(fetch());
 		clearFlags();
 		if (((reg->value ^ val ^ (reg->value + val)) & 0x100) == 0x100)
 			setFlag(C, true);
 		if (((reg->value ^ val ^ (reg->value + val)) & 0x10) == 0x10)
 			setFlag(H, true);
 		reg->value += val;
-		setFlag(Z, reg->value == 0);
+		setFlag(Z, reg->value == 0);*/
+		s8 number = toSigned(fetch());
+		int result = reg->value + number;
+		clearFlags();
+		if (((reg->value ^ number ^ (result & 0xFFFF)) & 0x100) == 0x100)
+		{
+			setFlag(C, true);
+		}
+		if (((reg->value ^ number ^ (result & 0xFFFF)) & 0x10) == 0x10)
+		{
+			setFlag(H, true);
+		}
+		reg->value = result;
 		return 0;
 	};
 }
@@ -404,8 +486,17 @@ function<int()> CPU::ADD(Register* reg1, Register* reg2) {
 
 function<int()> CPU::PUSH(Register* reg) {
 	return [&, reg]() {
-		bus->write(SP.value, reg->low);
-		bus->write(SP.value + 1, reg->high);
+		bus->write(--SP.value, reg->high);
+		bus->write(--SP.value, reg->low);
+		return 0;
+	};
+}
+
+function<int()> CPU::POP() {
+	return [&]() {
+		AF.low = bus->read(SP.value++);
+		AF.high = bus->read(SP.value++);
+		AF.low &= 0xF0;
 		return 0;
 	};
 }
@@ -586,13 +677,14 @@ function<int()> CPU::CPL(u8* reg) {
 	};
 }
 
-function<int()> CPU::RL(u8* reg) {
-	return [&, reg]() {
+function<int()> CPU::RL(u8* reg, bool isA) {
+	return [&, reg, isA]() {
 		u8 top = *reg >> 7;
 		*reg = (*reg << 1) | getFlag(C);
 		clearFlags();
 		setFlag(C, top);
 		setFlag(Z, *reg == 0);
+		if (isA) setFlag(Z, false);
 		return 0;
 	};
 }
@@ -611,13 +703,23 @@ function<int()> CPU::RL(Register* reg) {
 	};
 }
 
-function<int()> CPU::RLC(u8* reg) {
-	return [&, reg]() {
-		setFlag(C, *reg >> 7);
+function<int()> CPU::RLC(u8* reg, bool isA) {
+	return [&, reg, isA]() {
+		u8 top = *reg >> 7;
+		*reg = (*reg << 1) | top;
+		clearFlags();
+		setFlag(C, top);
+		setFlag(Z, *reg == 0);
+		if (isA) setFlag(Z, false);
+		return 0;
+
+
+		/*setFlag(C, *reg >> 7);
 		*reg = (*reg << 1) | getFlag(C);
 		clearFlags();
 		setFlag(Z, *reg == 0);
-		return 0;
+		if (isA) setFlag(Z, false);
+		return 0;*/
 	};
 }
 
@@ -625,22 +727,25 @@ function<int()> CPU::RLC(Register* reg) {
 	return [&, reg]() {
 		u16 addr = reg->value;
 		u8 val = bus->read(addr);
-		u8 res = (val << 1) | getFlag(C);
+		u8 top = val >> 7;
+		u8 res = (val << 1) | top;
 		clearFlags();
+		setFlag(C, top);
 		setFlag(Z, res == 0);
-		setFlag(C, val >> 7);
 		bus->write(addr, res);
 		return 0;
 	};
 }
 
-function<int()> CPU::RR(u8* reg) {
-	return [&, reg]() {
-		u8 bottom = *reg | 0x1;
-		*reg = (*reg >> 1) | (getFlag(C) << 7);
+function<int()> CPU::RR(u8* reg, bool isA) {
+	return [&, reg, isA]() {
+		u8 carry = getFlag(C) ? 1 : 0;
+		u8 bottom = *reg & 0x1;
+		*reg = (*reg >> 1) | (carry << 7);
 		clearFlags();
 		setFlag(Z, *reg == 0);
 		setFlag(C, bottom);
+		if (isA) setFlag(Z, false);
 		return 0;
 	};
 }
@@ -649,7 +754,7 @@ function<int()> CPU::RR(Register* reg) {
 	return [&, reg]() {
 		u16 addr = reg->value;
 		u8 val = bus->read(addr);
-		u8 bottom = val | 0x1;
+		u8 bottom = val & 0x1;
 		u8 res = (val >> 1) | (getFlag(C) << 7);
 		bus->write(addr, res);
 		clearFlags();
@@ -659,12 +764,13 @@ function<int()> CPU::RR(Register* reg) {
 	};
 }
 
-function<int()> CPU::RRC(u8* reg) {
-	return [&, reg]() {
+function<int()> CPU::RRC(u8* reg, bool isA) {
+	return [&, reg, isA]() {
 		clearFlags();
-		setFlag(C, *reg | 0x1);
+		setFlag(C, *reg & 0x1);
 		*reg = (*reg >> 1) | (getFlag(C) << 7);
 		setFlag(Z, *reg == 0);
+		if (isA) setFlag(Z, false);
 		return 0;
 	};
 }
@@ -674,7 +780,7 @@ function<int()> CPU::RRC(Register* reg) {
 		clearFlags();
 		u16 addr = reg->value;
 		u8 val = bus->read(addr);
-		setFlag(C, val | 0x1);
+		setFlag(C, val & 0x1);
 		u8 res = (val >> 1) | (getFlag(C) << 7);
 		bus->write(addr, res);
 		setFlag(Z, res == 0);
@@ -682,10 +788,10 @@ function<int()> CPU::RRC(Register* reg) {
 	};
 }
 
-function<int()> CPU::RLCA() { return RLC(&(AF.high)); }
-function<int()> CPU::RLA() { return RL(&(AF.high)); }
-function<int()> CPU::RRCA() { return RRC(&(AF.high)); }
-function<int()> CPU::RRA() { return RR(&(AF.high)); }
+function<int()> CPU::RLCA() { return RLC(&(AF.high), true); }
+function<int()> CPU::RLA() { return RL(&(AF.high), true); }
+function<int()> CPU::RRCA() { return RRC(&(AF.high), true); }
+function<int()> CPU::RRA() { return RR(&(AF.high), true); }
 
 function<int()> CPU::SLA(u8* reg) {
 	return [&, reg]() {
@@ -713,8 +819,10 @@ function<int()> CPU::SLA(Register* reg) {
 function<int()> CPU::SRA(u8* reg) {
 	return [&, reg]() {
 		clearFlags();
-		setFlag(C, *reg | 0x1);
-		*reg = (*reg >> 1) | (*reg & (1 << 7));
+		u8 bottom = *reg & 0x1;
+		u8 top = *reg & 0x80;
+		setFlag(C, bottom > 0);
+		*reg = (*reg >> 1) | top;
 		setFlag(Z, *reg == 0);
 		return 0;
 	};
@@ -725,8 +833,10 @@ function<int()> CPU::SRA(Register* reg) {
 		clearFlags();
 		u16 addr = reg->value;
 		u8 val = bus->read(addr);
-		setFlag(C, val | 0x1);
-		u8 res = (val >> 1) | (val & (1 << 7));
+		u8 bottom = val & 0x1;
+		u8 top = val & 0x80;
+		setFlag(C, bottom > 0);
+		u8 res = (val >> 1) | top;
 		bus->write(addr, res);
 		setFlag(Z, res == 0);
 		return 0;
@@ -736,8 +846,9 @@ function<int()> CPU::SRA(Register* reg) {
 function<int()> CPU::SRL(u8* reg) {
 	return [&, reg]() {
 		clearFlags();
-		setFlag(C, *reg | 0x1);
-		*reg = (*reg >> 1) & 0x7F;
+		u8 bottom = *reg & 0x1;
+		setFlag(C, bottom > 0);
+		*reg = *reg >> 1;
 		setFlag(Z, *reg == 0);
 		return 0;
 	};
@@ -748,8 +859,9 @@ function<int()> CPU::SRL(Register* reg) {
 		clearFlags();
 		u16 addr = reg->value;
 		u8 val = bus->read(addr);
-		setFlag(C, val | 0x1);
-		u8 res = (val >> 1) & 0x7F;
+		u8 bottom = val & 0x1;
+		setFlag(C, bottom > 0);
+		u8 res = val >> 1;
 		bus->write(addr, res);
 		setFlag(Z, res == 0);
 		return 0;
@@ -758,10 +870,15 @@ function<int()> CPU::SRL(Register* reg) {
 
 function<int()> CPU::SWAP(u8* reg) {
 	return [&, reg]() {
-		u8 res = (*reg >> 4) | (*reg << 4);
+		/*u8 res = (*reg >> 4) | (*reg << 4);
 		*reg = res;
 		clearFlags();
-		setFlag(Z, res == 0);
+		setFlag(Z, res == 0);*/
+		u8 low_half = *reg & 0x0F;
+		u8 high_half = (*reg >> 4) & 0x0F;
+		*reg = (low_half << 4) + high_half;
+		clearFlags();
+		setFlag(Z, *reg == 0);
 		return 0;
 	};
 }
@@ -816,7 +933,7 @@ function<int()> CPU::SET(u8 bitNumber, Register* reg) {
 
 function<int()> CPU::RES(u8 bitNumber, u8* reg) {
 	return [&, bitNumber, reg]() {
-		*reg |= ~(0x1 << bitNumber);
+		*reg &= ~(0x1 << bitNumber);
 		return 0;
 	};
 }
@@ -825,7 +942,7 @@ function<int()> CPU::RES(u8 bitNumber, Register* reg) {
 	return [&, bitNumber, reg]() {
 		u16 addr = reg->value;
 		u8 val = bus->read(addr);
-		bus->write(addr, val | ~(0x1 << bitNumber));
+		bus->write(addr, val & ~(0x1 << bitNumber));
 		return 0;
 	};
 }
@@ -871,7 +988,7 @@ function<int()> CPU::HALT() {
 
 function<int()> CPU::STOP() {
 	return [&]() {
-		stopped = true;
+		// stopped = true;
 		return 0;
 	};
 }
