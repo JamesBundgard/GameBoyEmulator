@@ -998,7 +998,7 @@ function<int()> CPU::DAA() {
 		// Details: https://ehaskins.com/2018-01-30%20Z80%20DAA/
 		// Implemtation: https://github.com/drhelius/Gearboy/blob/master/src/opcodes.cpp
 
-		u8 a = AF.high;
+		int a = AF.high;
 
 		if (!getFlag(N)) {
 			if (getFlag(H) || ((a & 0xF) > 9)) a += 0x06;
@@ -1009,15 +1009,15 @@ function<int()> CPU::DAA() {
 			if (getFlag(C)) a -= 0x60;
 		}
 
-		setFlag(H, !getFlag(H));
-		setFlag(Z, !getFlag(Z));
+		setFlag(H, false);
+		setFlag(Z, false);
 
 		if ((a & 0x100) == 0x100) setFlag(C, true);
 
 		a &= 0xFF;
 		setFlag(Z, a == 0);
-		AF.high = a;
 
+		AF.high = a;
 		return 0;
 	};
 }

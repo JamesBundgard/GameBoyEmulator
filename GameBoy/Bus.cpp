@@ -13,8 +13,8 @@ Bus::Bus() {
 
 	//memory = bootstrap;
 
-	//const string inputFile = "individual\\01-special.gb"; // "4F7E89D2 DAA Failed #6"
-	const string inputFile = "individual\\02-interrupts.gb"; // EI Failed #2
+	const string inputFile = "individual\\01-special.gb"; // "4F7E89D2 DAA Failed #6"
+	//const string inputFile = "individual\\02-interrupts.gb"; // EI Failed #2
 	//const string inputFile = "individual\\03-op sp,hl.gb"; // Passed!
 	//const string inputFile = "individual\\04-op r,imm.gb"; // Passed!
 	//const string inputFile = "individual\\05-op rp.gb"; // Passed!
