@@ -91,6 +91,49 @@ void CPU::attachBus(Bus* bus) {
 	this->bus = bus;
 }
 
+void CPU::checkInterupt() {
+	u8 interruptEnableRegister = bus->read(0xFFFF);
+	u8 interruptFlagRegister = bus->read(0xFF0F);
+	u8 status = interruptEnableRegister & interruptFlagRegister;
+
+	Interrupt interrupt = NoInterrupt;
+
+	if ((status & 0x1F) == 0) return;
+	else if (status & VBlankInterrupt) {
+		interrupt = VBlankInterrupt;
+		bus->write(--SP.value, PC.high);
+		bus->write(--SP.value, PC.low);
+		PC.value = 0x0040;
+	}
+	else if (status & LCDCInterrupt) {
+		interrupt = LCDCInterrupt;
+		bus->write(--SP.value, PC.high);
+		bus->write(--SP.value, PC.low);
+		PC.value = 0x0048;
+	}
+	else if (status & TimerInterrupt) {
+		interrupt = TimerInterrupt;
+		bus->write(--SP.value, PC.high);
+		bus->write(--SP.value, PC.low);
+		PC.value = 0x0050;
+	}
+	else if (status & SerialInterrupt) {
+		interrupt = SerialInterrupt;
+		bus->write(--SP.value, PC.high);
+		bus->write(--SP.value, PC.low);
+		PC.value = 0x0058;
+	}
+	else if (status & JoypadInterrupt) {
+		interrupt = JoypadInterrupt;
+		bus->write(--SP.value, PC.high);
+		bus->write(--SP.value, PC.low);
+		PC.value = 0x0060;
+	}
+
+	bus->write(0xff0f, interruptFlagRegister & ~interrupt);
+	return;
+}
+
 u8 CPU::fetch() {
 	return bus->read(PC.value++);
 }

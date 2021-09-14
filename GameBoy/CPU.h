@@ -7,8 +7,6 @@
 #include "definitions.h"
 #include "Bus.h"
 
-class CPU;
-
 typedef std::function<void(u8*, u8)> op;
 
 struct Instruction {
@@ -25,6 +23,16 @@ union Register
         u8 low;
         u8 high;
     };
+};
+
+enum Interrupt
+{
+    NoInterrupt = 0x00,
+    VBlankInterrupt = 0x01,
+    LCDCInterrupt = 0x02,
+    TimerInterrupt = 0x04,
+    SerialInterrupt = 0x08,
+    JoypadInterrupt = 0x10
 };
 
 enum FLAGS
@@ -160,4 +168,6 @@ public:
     void attachBus(Bus* bus);
     bool isStopped();
     void printState();
+
+    void checkInterupt();
 };

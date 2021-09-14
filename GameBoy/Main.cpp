@@ -3,6 +3,7 @@
 #include "olcPixelGameEngine.h"
 #include "CPU.h"
 #include "Bus.h"
+#include "PPU.h"
 
 #define SCREEN_HEIGHT 100
 #define SCREEN_WIDTH 150
@@ -55,10 +56,16 @@ int main() {
 	//GameBoy gb;
 	//if (gb.Construct(SCREEN_WIDTH, SCREEN_HEIGHT, PIXEL_SIZE, PIXEL_SIZE)) gb.start();
 	CPU cpu;
-	Bus bus;
+	PPU ppu;
+	Bus bus(&cpu, &ppu);
 	cpu.attachBus(&bus);
+	ppu.attachBus(&bus);
+	int i = 0;
 	while (!cpu.isStopped()) {
-		cpu.step();
+		if (i % 4 == 0)
+			cpu.step();
+		ppu.step();
+		i++;
 	}
 	return 0;
 }

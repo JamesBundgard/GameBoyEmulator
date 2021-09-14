@@ -143,12 +143,14 @@
     <ClCompile Include="Bus.cpp" />
     <ClCompile Include="CPU.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="PPU.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Bus.h" />
     <ClInclude Include="CPU.h" />
     <ClInclude Include="definitions.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
+    <ClInclude Include="PPU.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BootstrapROM.bin" />

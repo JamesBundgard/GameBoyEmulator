@@ -7,7 +7,7 @@
 
 using namespace std;
 
-Bus::Bus() {
+Bus::Bus(CPU* cpu, PPU* ppu) : ppu{ ppu }, cpu{ cpu } {
 	//ifstream bootstrapStream("BootstrapROM.bin", ios::binary);
 	//vector<u8> bootstrap((istreambuf_iterator<char>(bootstrapStream)), istreambuf_iterator<char>());
 
@@ -115,6 +115,8 @@ void Bus::write(u16 addr, u8 val) {
 		memory[addr] = val;
 		if (addr == 0xFF02 && val == 0x81) cout << memory[0xFF01] << flush;
 		//if (addr == 0xFF01) cout << val << flush;
+		if (addr == 0xFF45) this->ppu->handleLycSet();
+		if (addr == 0xFF46) this->ppu->triggerDMA();
 	}
 	else if (0xFF80 <= addr && addr <= 0xFFFE) { // High RAM (HRAM)
 		memory[addr] = val;
@@ -126,4 +128,8 @@ void Bus::write(u16 addr, u8 val) {
 		throw new exception("INVALID ADDRESS");
 	}
 	return;
+}
+
+void renderScanline(std::vector<u16> scanline) {
+
 }
