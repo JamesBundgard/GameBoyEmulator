@@ -1,21 +1,23 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 
 #include "Bus.h"
 #include "definitions.h"
+#include "PPU.h"
 
 using namespace std;
 
-Bus::Bus(CPU* cpu, PPU* ppu) : ppu{ ppu }, cpu{ cpu } {
-	//ifstream bootstrapStream("BootstrapROM.bin", ios::binary);
-	//vector<u8> bootstrap((istreambuf_iterator<char>(bootstrapStream)), istreambuf_iterator<char>());
+Bus::Bus(CPU* cpu, PPU* ppu, Display* display) : ppu{ ppu }, cpu{ cpu }, display{ display } {
+	/*ifstream bootstrapStream("BootstrapROM.bin", ios::binary);
+	vector<u8> bootstrap((istreambuf_iterator<char>(bootstrapStream)), istreambuf_iterator<char>());
 
-	//memory = bootstrap;
+	file = bootstrap;*/
 
-	const string inputFile = "individual\\01-special.gb"; // "4F7E89D2 DAA Failed #6"
+	//const string inputFile = "individual\\01-special.gb"; // "4F7E89D2 DAA Failed #6"
 	//const string inputFile = "individual\\02-interrupts.gb"; // EI Failed #2
-	//const string inputFile = "individual\\03-op sp,hl.gb"; // Passed!
+	const string inputFile = "individual\\03-op sp,hl.gb"; // Passed!
 	//const string inputFile = "individual\\04-op r,imm.gb"; // Passed!
 	//const string inputFile = "individual\\05-op rp.gb"; // Passed!
 	//const string inputFile = "individual\\06-ld r,r.gb"; // Passed!
@@ -24,6 +26,7 @@ Bus::Bus(CPU* cpu, PPU* ppu) : ppu{ ppu }, cpu{ cpu } {
 	//const string inputFile = "individual\\09-op r,r.gb"; // Passed!
 	//const string inputFile = "individual\\10-bit ops.gb"; // Passed!
 	//const string inputFile = "individual\\11-op a,(hl).gb"; // Failed: 27 (DAA)
+	//const string inputFile = "Tetris (World).gb";
 
 
 	ifstream stream(inputFile, ios::binary);
@@ -32,7 +35,7 @@ Bus::Bus(CPU* cpu, PPU* ppu) : ppu{ ppu }, cpu{ cpu } {
 
 	if (file.size() == 0) throw new exception("Error Reading File");
 	memory.resize(0x10000, 0);
-	memory.insert(memory.begin(), file.begin(), file.begin() + 0x8000);
+	memory.insert(memory.begin(), file.begin(), file.begin() + min(0x8000, (int)file.size()));
 }
 
 u8 Bus::read(u16 addr) {
@@ -113,8 +116,9 @@ void Bus::write(u16 addr, u8 val) {
 	}
 	else if (0xFF00 <= addr && addr <= 0xFF7F) { // I/O Ports
 		memory[addr] = val;
-		if (addr == 0xFF02 && val == 0x81) cout << memory[0xFF01] << flush;
-		//if (addr == 0xFF01) cout << val << flush;
+		if (addr == 0xFF02 && val == 0x81)
+			cout << memory[0xFF01] << flush;
+		// if (addr == 0xFF01) cout << val << flush;
 		if (addr == 0xFF45) this->ppu->handleLycSet();
 		if (addr == 0xFF46) this->ppu->triggerDMA();
 	}
@@ -130,6 +134,6 @@ void Bus::write(u16 addr, u8 val) {
 	return;
 }
 
-void renderScanline(std::vector<u16> scanline) {
-
+void Bus::renderScanline(u8 row, std::vector<u8> colours) {
+	this->display->drawScanline(row, colours);
 }

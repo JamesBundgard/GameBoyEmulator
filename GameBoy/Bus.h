@@ -3,8 +3,9 @@
 #include <vector>
 
 #include "definitions.h"
-#include "CPU.h"
-#include "PPU.h"
+
+class PPU;
+class CPU;
 
 class Bus {
 private:
@@ -12,10 +13,12 @@ private:
 	std::vector<u8> file;
 	CPU* cpu;
 	PPU* ppu;
+	Display* display;
+
 public:
-	Bus(CPU* cpu, PPU* ppu);
+	Bus(CPU* cpu, PPU* ppu, Display* display);
 	u8 read(u16 addr);
 	void write(u16 addr, u8 val);
 
-	void renderScanline(std::vector<u16> scanline);
+	void renderScanline(u8 row, std::vector<u8> colours);
 };

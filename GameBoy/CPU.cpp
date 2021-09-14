@@ -8,6 +8,7 @@
 
 #include "CPU.h"
 #include "definitions.h"
+#include "Bus.h"
 
 //std::ofstream myfile;
 
@@ -154,11 +155,11 @@ int CPU::step() {
 	}
 	auto& instructionDetails = lookup[is16bit][hi(instruction)][lo(instruction)];
 	cycles = instructionDetails.cycles;
-	if (instructionDetails.name == "RLC B")
+	/*if (instructionDetails.name == "RLC B")
 	{
 		//printState();
 		//cout << std::dec << PC.value - 1 << " (" << std::hex << PC.value - 1 << ") : " << instructionDetails.name << endl;
-	}
+	}*/
 	//myfile << std::hex << PC.value << " " << AF.value << " " << BC.value << " " << DE.value << " " << HL.value << " " << SP.value << " " << std::endl;
 	s1.insert(instruction + is16bit * 0xCB00);
 	/*if (instructionDetails.name == "HALT" || instructionDetails.name == "STOP" || PC.value == 52037) {

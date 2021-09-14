@@ -5,7 +5,8 @@
 #include <functional>
 
 #include "definitions.h"
-#include "Bus.h"
+
+class Bus;
 
 typedef std::function<void(u8*, u8)> op;
 

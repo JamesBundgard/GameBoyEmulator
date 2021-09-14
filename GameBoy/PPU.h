@@ -62,10 +62,10 @@ private:
     void setMode(u8 mode);
     void setLY(u8 scanline);
 
-    std::vector<u16> generateScanline();
+    std::vector<u8> generateScanline();
 public:
     PPU();
-    int step();
+    void step();
     void attachBus(Bus* bus);
 
     void setLCDC(u8 val);

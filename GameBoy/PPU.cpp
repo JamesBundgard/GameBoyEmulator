@@ -17,24 +17,25 @@ const u16 LCDC = 0xFF40;
 // See https://gbdev.io/pandocs/Rendering.html
 // Palettes: BGP (0xFF47), OBP0 (0xFF48), OBP1 (0xFF49)
 
-vector<u16> tileToRowColours(Tile tile) {
-	vector<u16> res;
+vector<vector<u8>> tileToRowColours(Tile tile) {
+	vector<vector<u8>> res(8);
 	for (auto& row : tile.data) {
-		u16 colours = 0;
+		//u16 colours = 0;
 		u8 ptr = 0x80;
 		for (int i = 7; i >= 0; i--) {
 			u8 colour = (((row[1] & ptr) >> i) << 1) | ((row[0] & ptr) >> i);
-			colours |= (colour << (2 * i));
+			//colours |= (colour << (2 * i));
 			ptr >>= 1;
+			res[7 - i].push_back(colour);
 		}
-		res.push_back(colours);
 	}
+	return res;
 }
 
 vector<Sprite> filterSprites(u8 scanline, vector<Sprite> sprites) {
 	vector<Sprite> res;
 	u8 height = (sprites[0].tiles.size() > 1) ? 16 : 8;
-	for (auto sprite : sprites) {
+	for (auto& sprite : sprites) {
 		if (res.size() >= 10) break;
 		int yPosInScreen = sprite.yPos - 16;
 		if (yPosInScreen <= scanline && scanline <= yPosInScreen + height) {
@@ -46,7 +47,7 @@ vector<Sprite> filterSprites(u8 scanline, vector<Sprite> sprites) {
 
 PPU::PPU() {}
 
-int PPU::step() {
+void PPU::step() {
 	if (this->DMA > 0) {
 		u8 page = this->bus->read(0xFF46);
 		u16 offset = 160 - this->DMA;
@@ -92,9 +93,9 @@ int PPU::step() {
 			this->cycles += 1;
 			if (this->cycles == 72) {
 				// Create scanline
-				vector<u16> line = this->generateScanline();
+				vector<u8> line = this->generateScanline();
 				// Send scanline to bus for display
-				this->bus->renderScanline(line);
+				this->bus->renderScanline(this->scanline, line);
 				this->cycles = 0;
 				this->setMode(0);
 			}
@@ -108,25 +109,67 @@ bool spriteCompare(Sprite i, Sprite j) {
 }
 
 
-std::vector<u16> PPU::generateScanline() {
-	vector<s8> line(160);
-	if (this->getObjEnable() == 1) {
+std::vector<u8> PPU::generateScanline() {
+	vector<u8> line(160, 0);
+	// Gets Sprites
+	/*if (this->getObjEnable() == 1) {
 		vector<Sprite> sprites = filterSprites(this->scanline, this->getSprites());
 		sort(sprites.begin(), sprites.end(), spriteCompare);
-		for (auto sprite : sprites) {
+		for (auto& sprite : sprites) {
+			u8 palette = this->bus->read(0xFF48 + ((sprite.attributes >> 4) & 1));
 			int xPos = sprite.xPos - 8;
 			int width = 8;
 			if (xPos < 0) {
 				width = xPos + 8;
+				xPos = 0;
 			}
 			else if (xPos > 160) {
 				width = 168 - xPos;
+				xPos = 160 - width;
 			}
 			if (width <= 0) continue;
 
+			int tileRow = sprite.yPos - 16 + scanline;
+			if (tileRow < 0 || tileRow >= 16) continue;
+			if (tileRow >= 8 and sprite.tiles.size() != 2) continue;
 
+			Tile tile = (tileRow >= 8) ? sprite.tiles[1] : sprite.tiles[0];
+			auto colours = tileToRowColours(tile);
+
+			for (int i = 0; i < width; i++) {
+				u8 offset = (sprite.xPos - 8 < 0) ? - (sprite.xPos - 8) : 0;
+				u8 colour = colours[tileRow][offset + i];
+				if (colour != 0) {
+					u8 translatedColour = (palette >> (colour * 2)) & 0x3;
+					line.insert(line.begin() + xPos + i, translatedColour);
+				}
+			}
 		}
+	}*/
+
+	// Gets Background/Window
+	u8 index = this->getWindowIndex() | this->getBackgroundIndex();
+	vector<vector<Tile>> tiles = getTileMap(index);
+
+	u8 x = getSCX() % 256;
+	u8 y = (getSCY() + scanline) % 256;
+
+	u8 firstTileX = x / 8;
+	u8 lastTileX = 5 + (x % 8 > 0);
+
+	u8 tileY = y / 8;
+	u8 rowIndex = y - (8 * tileY);
+
+	vector<u8> total;
+	for (int i = 0; i < 32; i++) {
+		auto colours = tileToRowColours(tiles[tileY][i]);
+		vector<u8> row = colours[rowIndex];
+		total.insert(total.end(), row.begin(), row.end());
 	}
+
+	line.insert(line.begin(), total.begin() + x, total.begin() + x + 160);
+
+	return line;
 }
 
 Tile PPU::getTile(u8 index) {
@@ -165,10 +208,10 @@ vector<vector<Tile>> PPU::getTileMap(u8 index) {
 	for (int i = 0; i < 32; i++) {
 		for (int j = 0; j < 32; j++) {
 			if (this->getTileIndexType() == 0) {
-				map[i][j] = this->getTile(this->bus->read(addr++));
+				map[i].push_back(this->getTile(this->bus->read(addr++)));
 			}
 			else {
-				map[i][j] = this->getTileSigned((s8) this->bus->read(addr++));
+				map[i].push_back(this->getTileSigned((s8) this->bus->read(addr++)));
 			}
 		}
 	}
