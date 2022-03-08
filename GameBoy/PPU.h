@@ -31,13 +31,16 @@ private:
     u8 cycles = 0; // 456 dots (114 cpu cycles) per scanline
     u8 mode = 2;
 
+    bool doneFrame = false;
+    std::vector<u8> currentLine;
+
     //void triggerVBlank();
     //void triggerLCDC();
 
-    Tile getTile(u8 index);
-    Tile getTileSigned(s8 index);
+    std::span<u8> getTile(u8 index);
+    std::span<u8> getTileSigned(s8 index);
     Tile getSprite(u8 index);
-    std::vector<std::vector<Tile>> getTileMap(u8 index);
+    void getTileMapRow(u8 index, u8 row, u8 x, u8 rowIndex);
     std::vector<Sprite> getSprites();
 
     u8 getBackgroundIndex();
@@ -62,7 +65,7 @@ private:
     void setMode(u8 mode);
     void setLY(u8 scanline);
 
-    std::vector<u8> generateScanline();
+    void generateScanline();
 public:
     PPU();
     void step();
@@ -72,4 +75,5 @@ public:
     void triggerDMA();
 
     void handleLycSet();
+    bool isDoneFrame() { return doneFrame; }
 };

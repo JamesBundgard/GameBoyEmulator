@@ -6,6 +6,7 @@
 #include <set>
 #include <iterator>
 #include <algorithm>
+#include <span>
 
 #include "PPU.h"
 #include "definitions.h"
@@ -17,19 +18,18 @@ const u16 LCDC = 0xFF40;
 // See https://gbdev.io/pandocs/Rendering.html
 // Palettes: BGP (0xFF47), OBP0 (0xFF48), OBP1 (0xFF49)
 
-vector<vector<u8>> tileToRowColours(Tile tile) {
-	vector<vector<u8>> res(8);
-	for (auto& row : tile.data) {
-		//u16 colours = 0;
-		u8 ptr = 0x80;
-		for (int i = 7; i >= 0; i--) {
-			u8 colour = (((row[1] & ptr) >> i) << 1) | ((row[0] & ptr) >> i);
-			//colours |= (colour << (2 * i));
-			ptr >>= 1;
-			res[7 - i].push_back(colour);
-		}
+void tileToRowColours(span<u8> tile, u8 rowNum, vector<u8>* out) {
+	auto first = tile[rowNum * 2];
+	auto second = tile[rowNum * 2 + 1];
+	//u16 colours = 0;
+	u8 ptr = 0x80;
+	for (int i = 7; i >= 0; i--) {
+		u8 colour = (((second & ptr) >> i) << 1) | ((first & ptr) >> i);
+		//colours |= (colour << (2 * i));
+		ptr >>= 1;
+		out->emplace_back(colour);
 	}
-	return res;
+	return;
 }
 
 vector<Sprite> filterSprites(u8 scanline, vector<Sprite> sprites) {
@@ -61,6 +61,7 @@ void PPU::step() {
 	}
 	else {
 		this->setLY(this->scanline);
+		u8 status = this->bus->read(0xFF0F);
 		switch (mode) {
 		case 0: // HBlank
 			this->cycles += 1;
@@ -72,6 +73,8 @@ void PPU::step() {
 			}
 			return;
 		case 1: // VBlank
+			if (this->scanline == 144 && this->cycles == 0)
+				this->bus->write(0xFF0F, status | 1);
 			this->cycles += 1;
 			if (this->cycles == 114) {
 				this->cycles = 0;
@@ -79,10 +82,12 @@ void PPU::step() {
 				if (this->scanline == 154) {
 					this->scanline = 0;
 					this->setMode(2);
+					doneFrame = true;
 				}
 			}
 			return;
 		case 2: // Searching OAM
+			doneFrame = false;
 			this->cycles += 1;
 			if (this->cycles == 20) {
 				this->cycles = 0;
@@ -93,9 +98,9 @@ void PPU::step() {
 			this->cycles += 1;
 			if (this->cycles == 72) {
 				// Create scanline
-				vector<u8> line = this->generateScanline();
+				this->generateScanline();
 				// Send scanline to bus for display
-				this->bus->renderScanline(this->scanline, line);
+				this->bus->renderScanline(this->scanline, &currentLine);
 				this->cycles = 0;
 				this->setMode(0);
 			}
@@ -108,9 +113,7 @@ bool spriteCompare(Sprite i, Sprite j) {
 	return i.xPos > j.xPos; // smaller xPos has priority -> render last
 }
 
-
-std::vector<u8> PPU::generateScanline() {
-	vector<u8> line(160, 0);
+void PPU::generateScanline() {
 	// Gets Sprites
 	/*if (this->getObjEnable() == 1) {
 		vector<Sprite> sprites = filterSprites(this->scanline, this->getSprites());
@@ -149,7 +152,6 @@ std::vector<u8> PPU::generateScanline() {
 
 	// Gets Background/Window
 	u8 index = this->getWindowIndex() | this->getBackgroundIndex();
-	vector<vector<Tile>> tiles = getTileMap(index);
 
 	u8 x = getSCX() % 256;
 	u8 y = (getSCY() + scanline) % 256;
@@ -160,36 +162,19 @@ std::vector<u8> PPU::generateScanline() {
 	u8 tileY = y / 8;
 	u8 rowIndex = y - (8 * tileY);
 
-	vector<u8> total;
-	for (int i = 0; i < 32; i++) {
-		auto colours = tileToRowColours(tiles[tileY][i]);
-		vector<u8> row = colours[rowIndex];
-		total.insert(total.end(), row.begin(), row.end());
-	}
+	getTileMapRow(index, tileY, x, rowIndex);
 
-	line.insert(line.begin(), total.begin() + x, total.begin() + x + 160);
-
-	return line;
+	return;
 }
 
-Tile PPU::getTile(u8 index) {
+span<u8> PPU::getTile(u8 index) {
 	u16 addr = 0x8000 + index * 16;
-	Tile t;
-	for (int i = 0; i < 8; i++) {
-		t.data[i].push_back(this->bus->read(addr++));
-		t.data[i].push_back(this->bus->read(addr++));
-	}
-	return t;
+	return this->bus->readRange(addr, 16);
 }
 
-Tile PPU::getTileSigned(s8 index) {
+span<u8> PPU::getTileSigned(s8 index) {
 	u16 addr = 0x8800 + index * 16;
-	Tile t;
-	for (int i = 0; i < 8; i++) {
-		t.data[i].push_back(this->bus->read(addr++));
-		t.data[i].push_back(this->bus->read(addr++));
-	}
-	return t;
+	return this->bus->readRange(addr, 16);
 }
 
 Tile PPU::getSprite(u8 index) {
@@ -202,26 +187,30 @@ Tile PPU::getSprite(u8 index) {
 	return t;
 }
 
-vector<vector<Tile>> PPU::getTileMap(u8 index) {
+void PPU::getTileMapRow(u8 index, u8 row, u8 x, u8 rowIndex) {
 	u16 addr = (index == 0) ? 0x9800 : 0x9C00;
-	vector<vector<Tile>> map(32);
-	for (int i = 0; i < 32; i++) {
-		for (int j = 0; j < 32; j++) {
-			if (this->getTileIndexType() == 0) {
-				map[i].push_back(this->getTile(this->bus->read(addr++)));
-			}
-			else {
-				map[i].push_back(this->getTileSigned((s8) this->bus->read(addr++)));
-			}
+	addr += 32 * row;
+	vector<u8> total;
+	for (int j = 0; j < 32; j++) {
+		if (this->getTileIndexType() == 0) {
+			auto tile = this->getTile(this->bus->read(addr++));
+			tileToRowColours(tile, rowIndex, &total);
+		}
+		else {
+			auto tile = this->getTileSigned((s8) this->bus->read(addr++));
+			tileToRowColours(tile, rowIndex, &total);
 		}
 	}
-	return map;
+
+	auto start = total.begin() + x;
+	currentLine = vector(start, start + 160);
+	return;
 }
 
 vector<Sprite> PPU::getSprites() {
 	u16 addr = 0xFE00;
 	vector<Sprite> list;
-	for (int i = 0; i < 40; i++) {
+	/*for (int i = 0; i < 40; i++) {
 		Sprite s;
 		s.yPos = this->bus->read(addr++);
 		s.xPos = this->bus->read(addr++);
@@ -248,7 +237,7 @@ vector<Sprite> PPU::getSprites() {
 		s.attributes = this->bus->read(addr++);
 
 		list.emplace_back(s);
-	}
+	}*/
 	return list;
 }
 

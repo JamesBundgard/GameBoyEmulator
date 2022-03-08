@@ -17,7 +17,7 @@ typedef int64_t s64;
 
 class Display {
 public:
-	virtual void drawScanline(u8 row, std::vector<u8> colours) = 0;
+	virtual void drawScanline(u8 row, std::vector<u8>* colours) = 0;
 };
 
 #endif

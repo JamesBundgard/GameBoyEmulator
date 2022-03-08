@@ -92,14 +92,15 @@ void CPU::attachBus(Bus* bus) {
 	this->bus = bus;
 }
 
-void CPU::checkInterupt() {
+bool CPU::checkInterupt() {
 	u8 interruptEnableRegister = bus->read(0xFFFF);
 	u8 interruptFlagRegister = bus->read(0xFF0F);
 	u8 status = interruptEnableRegister & interruptFlagRegister;
 
+	if (!this->interuptsEnabled) return false;
 	Interrupt interrupt = NoInterrupt;
-
-	if ((status & 0x1F) == 0) return;
+	cout << "Handling Interrupt " << interrupt << endl;
+	if ((status & 0x1F) == 0) return false;
 	else if (status & VBlankInterrupt) {
 		interrupt = VBlankInterrupt;
 		bus->write(--SP.value, PC.high);
@@ -130,9 +131,9 @@ void CPU::checkInterupt() {
 		bus->write(--SP.value, PC.low);
 		PC.value = 0x0060;
 	}
-
+	stopped = false;
 	bus->write(0xff0f, interruptFlagRegister & ~interrupt);
-	return;
+	return true;
 }
 
 u8 CPU::fetch() {
@@ -155,6 +156,7 @@ int CPU::step() {
 	}
 	auto& instructionDetails = lookup[is16bit][hi(instruction)][lo(instruction)];
 	cycles = instructionDetails.cycles;
+	//cout << std::dec << PC.value - 1 << " (" << std::hex << PC.value - 1 << ") : " << instructionDetails.name << endl;
 	/*if (instructionDetails.name == "RLC B")
 	{
 		//printState();

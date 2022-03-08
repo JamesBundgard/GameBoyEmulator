@@ -19,9 +19,9 @@ static const olc::Pixel
 class GameBoy : public olc::PixelGameEngine, public Display
 {
 private:
-	int nClockSpeed = 4194304;
-	float fResidualTime = 0.0f;
-	int  nCycles = 0;
+	int clockSpeed = 4194304;
+	float residualTime = 0.0f;
+	int  cycles = 0;
 	int counter = 0;
 	
 	CPU cpu;
@@ -39,38 +39,38 @@ public:
 	}
 
 	// called once per frame
-	bool OnUserUpdate(float fElapsedTime) override
+	bool OnUserUpdate(float elapsedTime) override
 	{
-		if (fResidualTime > 0.0f)
-			fResidualTime -= fElapsedTime;
+		if (residualTime > 0.0f)
+			residualTime -= elapsedTime;
 		else
 		{
-			fResidualTime += (1.0f / nClockSpeed) - fElapsedTime;
-
-			// Get user input and process
-			// ex. GetKey(olc::Key::W).bHeld
-
-			// cycles for a frame
-			for (int i = 0; i < 17556; i++) {
+			residualTime += (1.0f / clockSpeed) - elapsedTime;
+			do {
 				if (counter % 4 == 0) {
-					if (nCycles == 0) {
-						if (!cpu.isStopped())
-							nCycles = cpu.step();
+					if (cycles == 0) {
+						cpu.checkInterupt();
+						if (!cpu.isStopped()) {
+							cycles = cpu.step();
+						}
 					}
-					nCycles--;
+					cycles--;
 				}
 				ppu.step();
 				counter++;
-			}
+			} while (!ppu.isDoneFrame());
 		}
+
+		// Get user input and process
+		// ex. GetKey(olc::Key::W).bHeld
 		
 		return true;
 	}
 
-	void drawScanline(u8 row, vector<u8> scanline) {
+	void drawScanline(u8 row, vector<u8>* scanline) {
 		for (int i = 0; i < 160; i++) {
 			olc::Pixel p;
-			switch (scanline[i]) {
+			switch (scanline->at(i)) {
 			case 0:
 				p = LIGHTEST;
 				break;

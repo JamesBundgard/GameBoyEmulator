@@ -57,7 +57,7 @@ private:
     Register SP = { 0xFFFE };
     Register PC = { 0x0100 };
 
-    bool interuptsEnabled = true;
+    bool interuptsEnabled = false;
     bool stopped = false;
 
     std::vector<std::vector<std::vector<Instruction>>> lookup;
@@ -170,5 +170,5 @@ public:
     bool isStopped();
     void printState();
 
-    void checkInterupt();
+    bool checkInterupt();
 };
